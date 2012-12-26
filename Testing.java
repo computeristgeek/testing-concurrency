@@ -6,5 +6,6 @@ class Testing{
 	}
 
 	public void salah(){
+		System.out.println("edit from my own fork through website");
 	}
 }
