@@ -2,7 +2,7 @@
 #http://alohakun.blog7.fc2.com/?mode=m&no=355
 BEGIN {RS = "~@"; printf "digraph G {\n node [shape = record];";}
 /^[0-9]/{
-s = sprintf("%s [label = \"{%s | {", $1, $1);
+s = sprintf("\n%s [label = \"{%s | {", $1, $1);
 for(i = 2; i < NF; i++)
 	s = s sprintf("%s | ", $i);
 	s = s sprintf("%s}}\"];", $i);
