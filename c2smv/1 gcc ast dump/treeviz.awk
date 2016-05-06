@@ -3,14 +3,14 @@
 BEGIN {RS = "~@"; printf "digraph G {\n node [shape = record];";}
 /^[0-9]/{
 s = sprintf("%s [label = \"{%s | {", $1, $1);
-for(i = 2; i < NF-1; i++)
+for(i = 2; i < NF; i++)
 	s = s sprintf("%s | ", $i);
-	s = s sprintf("%s}}\"];\n", $i);
+	s = s sprintf("%s}}\"];", $i);
 	$0 = s;
-	while (/([a-zA-Z]+):@([0-9]+)/){
+	while (/([a-zA-Z0-9]+):@([0-9]+)/){
 		format = sprintf("\\1 \\3\n %s:\\1 -> \\2;", $1);
-		$0 = gensub(/([a-zA-Z]+):@([0-9]+)(.*)$/, format, "g");
+		$0 = gensub(/([a-zA-Z0-9]+):@([0-9]+)(.*)$/, format, "g");
 	};
-	printf " %s\n", $0;
+	printf " %s", $0;
 }
-END {print "}"}
+END {print "\n}"}
