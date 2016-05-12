@@ -1,0 +1,110 @@
+-- This file is generated from model.ump --
+
+-- PLEASE DO NOT EDIT THIS CODE --
+-- This code was generated using the UMPLE 1.24.0-78d6971 modeling language! --
+
+
+-- This defines a NuSMV module for Connection --
+MODULE Connection
+
+   -- This part declares state variables for the given NuSMV module --
+   VAR
+     state : { Connection_Closed , Connection_Listen , Connection_SYN_Received , Connection_SYN_Sent , Connection_Established , Connection_Close_Wait , Connection_Last_ACK , Connection_FIN_Wait_1 , Connection_FIN_Wait_2 , Connection_Closing , Connection_Timed_Wait };
+     event : { ev_activeOpen , ev_passiveClose , ev_data , ev_activeClose , ev_finAck , ev_passiveOpen , ev_ack , ev_synAck , ev_syn , ev_fin , ev_close , ev_timeOut , ev_null };
+
+   -- This part defines macros that summarize the transitions and guards (if any) of the given NuSMV module --
+   DEFINE
+     connection_stable :=  !( event = ev_activeOpen | event = ev_data | event = ev_finAck | event = ev_ack | event = ev_syn | event = ev_close | event = ev_passiveClose | event = ev_activeClose | event = ev_passiveOpen | event = ev_synAck | event = ev_fin | event = ev_timeOut );
+     t1 := event = ev_passiveOpen & state = Connection_Closed;
+     t2 := event = ev_activeOpen & state = Connection_Closed;
+     t3 := event = ev_syn & state = Connection_Listen;
+     t4 := event = ev_close & state = Connection_Listen;
+     t5 := event = ev_ack & state = Connection_SYN_Received;
+     t6 := event = ev_synAck & state = Connection_SYN_Sent;
+     t7 := event = ev_fin & state = Connection_Established;
+     t8 := event = ev_activeClose & state = Connection_Established;
+     t9 := event = ev_data & state = Connection_Established;
+     t10 := event = ev_passiveClose & state = Connection_Close_Wait;
+     t11 := event = ev_ack & state = Connection_Last_ACK;
+     t12 := event = ev_ack & state = Connection_FIN_Wait_1;
+     t13 := event = ev_fin & state = Connection_FIN_Wait_1;
+     t14 := event = ev_finAck & state = Connection_FIN_Wait_1;
+     t15 := event = ev_fin & state = Connection_FIN_Wait_2;
+     t16 := event = ev_ack & state = Connection_Closing;
+     t17 := event = ev_timeOut & state = Connection_Timed_Wait;
+
+   -- This part defines logic for the assignment of values to state variable "state" of this NuSMV module --
+   ASSIGN
+     init( state ) := Connection_Closed;
+     next( state ) := case
+       t11 | t4 | t17 : Connection_Closed;
+       t1 : Connection_Listen;
+       t3 : Connection_SYN_Received;
+       t2 : Connection_SYN_Sent;
+       t6 | t5 | t9 : Connection_Established;
+       t7 : Connection_Close_Wait;
+       t10 : Connection_Last_ACK;
+       t8 : Connection_FIN_Wait_1;
+       t12 : Connection_FIN_Wait_2;
+       t13 : Connection_Closing;
+       t15 | t14 | t16 : Connection_Timed_Wait;
+       TRUE : state;
+     esac;
+
+   -- This part defines logic for the assignment of values to state variable "event" of this NuSMV module --
+   ASSIGN
+     init( event ) := ev_null;
+     next( event ) := case
+       connection_stable : { ev_activeOpen , ev_passiveClose , ev_data , ev_activeClose , ev_finAck , ev_passiveOpen , ev_ack , ev_synAck , ev_syn , ev_fin , ev_close , ev_timeOut };
+       TRUE : ev_null;
+     esac;
+
+   -- This part defines logic for the assignment of values to state variable "SYN" of this NuSMV module --
+   ASSIGN
+     init( SYN ) := "SYN";
+
+   -- This part defines logic for the assignment of values to state variable "ACK" of this NuSMV module --
+   ASSIGN
+     init( ACK ) := "ACK";
+
+   -- This part defines logic for the assignment of values to state variable "FIN" of this NuSMV module --
+   ASSIGN
+     init( FIN ) := "FIN";
+
+   -- This part defines logic for the assignment of values to state variable "RST" of this NuSMV module --
+   ASSIGN
+     init( RST ) := "RST";
+
+   -- This part defines logic for the assignment of values to state variable "SYNACK" of this NuSMV module --
+   ASSIGN
+     init( SYNACK ) := "SYNAck";
+
+   -- This part defines logic for the assignment of values to state variable "q" of this NuSMV module --
+   ASSIGN
+     init( q ) := new Queue_Tcp();
+
+   -- This part defines logic for the assignment of values to state variable "in" of this NuSMV module --
+   ASSIGN
+     init( in ) := null;
+
+   -- This part defines logic for the assignment of values to state variable "sentence" of this NuSMV module --
+   ASSIGN
+     init( sentence ) := ;
+
+-- This defines a NuSMV module for main --
+MODULE main
+
+   -- This part declares state variables for the given NuSMV module --
+   VAR
+     connection : Connection;
+CTLSPEC   EF( connection.state = Connection_Closed )
+CTLSPEC   EF( connection.state = Connection_Listen )
+CTLSPEC   EF( connection.state = Connection_SYN_Received )
+CTLSPEC   EF( connection.state = Connection_SYN_Sent )
+CTLSPEC   EF( connection.state = Connection_Established )
+CTLSPEC   EF( connection.state = Connection_Close_Wait )
+CTLSPEC   EF( connection.state = Connection_Last_ACK )
+CTLSPEC   EF( connection.state = Connection_FIN_Wait_1 )
+CTLSPEC   EF( connection.state = Connection_FIN_Wait_2 )
+CTLSPEC   EF( connection.state = Connection_Closing )
+CTLSPEC   EF( connection.state = Connection_Timed_Wait )
