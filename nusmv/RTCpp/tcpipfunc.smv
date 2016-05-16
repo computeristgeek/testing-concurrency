@@ -1,0 +1,395 @@
+-- This defines a NuSMV module for Connection --
+MODULE Connection
+
+   -- This part declares state variables for the given NuSMV module --
+   VAR
+     state : { Connection_Closed , Connection_Listen , Connection_SYN_Received , Connection_SYN_Sent , Connection_Established , Connection_Close_Wait , Connection_Last_ACK , Connection_FIN_Wait_1 , Connection_FIN_Wait_2 , Connection_Closing , Connection_Timed_Wait };
+     event : { ev_activeOpen , ev_passiveClose , ev_data , ev_activeClose , ev_finAck , ev_passiveOpen , ev_ack , ev_synAck , ev_syn , ev_fin , ev_close , ev_timeOut , ev_null };
+
+   -- This part defines macros that summarize the transitions and guards (if any) of the given NuSMV module --
+   DEFINE
+     connection_stable :=  !( event = ev_activeOpen | event = ev_data | event = ev_finAck | event = ev_ack | event = ev_syn | event = ev_close | event = ev_passiveClose | event = ev_activeClose | event = ev_passiveOpen | event = ev_synAck | event = ev_fin | event = ev_timeOut );
+     t1 := event = ev_passiveOpen & state = Connection_Closed;
+     t2 := event = ev_activeOpen & state = Connection_Closed;
+     t3 := event = ev_syn & state = Connection_Listen;
+     t4 := event = ev_close & state = Connection_Listen;
+     t5 := event = ev_ack & state = Connection_SYN_Received;
+     t6 := event = ev_synAck & state = Connection_SYN_Sent;
+     t7 := event = ev_fin & state = Connection_Established;
+     t8 := event = ev_activeClose & state = Connection_Established;
+     t9 := event = ev_data & state = Connection_Established;
+     t10 := event = ev_passiveClose & state = Connection_Close_Wait;
+     t11 := event = ev_ack & state = Connection_Last_ACK;
+     t12 := event = ev_ack & state = Connection_FIN_Wait_1;
+     t13 := event = ev_fin & state = Connection_FIN_Wait_1;
+     t14 := event = ev_finAck & state = Connection_FIN_Wait_1;
+     t15 := event = ev_fin & state = Connection_FIN_Wait_2;
+     t16 := event = ev_ack & state = Connection_Closing;
+     t17 := event = ev_timeOut & state = Connection_Timed_Wait;
+
+   -- This part defines logic for the assignment of values to state variable "state" of this NuSMV module --
+   ASSIGN
+     init( state ) := Connection_Closed;
+     next( state ) := case
+       t11 | t4 | t17 : Connection_Closed;
+       t1 : Connection_Listen;
+       t3 : Connection_SYN_Received;
+       t2 : Connection_SYN_Sent;
+       t6 | t5 | t9 : Connection_Established;
+       t7 : Connection_Close_Wait;
+       t10 : Connection_Last_ACK;
+       t8 : Connection_FIN_Wait_1;
+       t12 : Connection_FIN_Wait_2;
+       t13 : Connection_Closing;
+       t15 | t14 | t16 : Connection_Timed_Wait;
+       TRUE : state;
+     esac;
+
+   -- This part defines logic for the assignment of values to state variable "event" of this NuSMV module --
+   ASSIGN
+     init( event ) := ev_null;
+     next( event ) := case
+       connection_stable : { ev_activeOpen , ev_passiveClose , ev_data , ev_activeClose , ev_finAck , ev_passiveOpen , ev_ack , ev_synAck , ev_syn , ev_fin , ev_close , ev_timeOut };
+       TRUE : ev_null;
+     esac;
+
+-- This defines a NuSMV module for main --
+MODULE proc
+	VAR
+		name : array 0..255 of 0..255;
+		state : 0..255;
+		needspoll : 0..255;
+		-- uint16_t
+		n: 0..65536;
+
+MODULE listenport
+	VAR
+		-- uint16_t
+		port : 0..65536;
+		p : proc;
+
+MODULE internal_state
+	VAR
+		listenports : array 0..4 of 0..65536; --listenport; 
+		procs : array 0..4 of 0..65536; --listenport's proc;
+		p : proc;
+
+MODULE g
+	VAR
+		s : internal_state;
+	DEFINE
+		-- max simultaneous listen on ports
+		-- 4 on native, 20 ifndef UIP_CONF_MAX_LISTENPORTS 
+		UIP_LISTENPORTS := 4;
+		--enu := {TCP_POLL,UDP_POLL,PACKET_INPUT};
+		
+MODULE tcp_unlisten(global,port)
+	VAR
+		-- static unsigned char i;
+		i : 0..255;
+		-- struct listenport *l;
+		l : 0..(global.UIP_LISTENPORTS);
+		f : boolean; --listened, break!
+	ASSIGN
+		init(f) := FALSE;
+		-- l=s.listenports;
+		init(l):=0;
+		next(l):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[l]=port & global.s.procs[l] = 1 & !f : 
+					--MVOC PROCESS_CURRENT()
+					l;
+				i<global.UIP_LISTENPORTS & !f:
+					-- for loop's (...;i < UIP_LISTENPORTS; ++i)
+					l+1;
+				TRUE :
+					l;
+			esac;
+		-- for loop's i=0
+		init(i):=0;
+		next(i):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[l]=port & global.s.procs[l] = 1 & !f : 
+					--MVOC PROCESS_CURRENT()
+					i;
+				i<global.UIP_LISTENPORTS & !f:
+					-- for loop's (...;i < UIP_LISTENPORTS; ++i)
+					i+1;
+				TRUE :
+					i;
+			esac;
+		next(global.s.listenports[0]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[0]=port & global.s.procs[0] = 1 & !f: 0; 
+					--MVOC PROCESS_CURRENT()
+				TRUE : global.s.listenports[0];
+			esac;
+		next(global.s.procs[0]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[0]=port & global.s.procs[0] = 1 & !f: 
+					--MVOC PROCESS_CURRENT();
+					0;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.listenports[0];
+			esac;
+		next(global.s.listenports[1]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[1]=port & global.s.procs[1] = 1 & !f: 0; 
+					--MVOC PROCESS_CURRENT()
+				TRUE : global.s.listenports[1];
+			esac;
+		next(global.s.procs[1]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[1]=port & global.s.procs[1] = 1 & !f: 
+					--MVOC PROCESS_CURRENT();
+					0;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.listenports[1];
+			esac;
+		next(global.s.listenports[2]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[2]=port & global.s.procs[2] = 1 & !f: 0; 
+					--MVOC PROCESS_CURRENT()
+				TRUE : global.s.listenports[2];
+			esac;
+		next(global.s.procs[2]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[2]=port & global.s.procs[2] = 1 & !f: 
+					--MVOC PROCESS_CURRENT();
+					0;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.listenports[2];
+			esac;
+		next(global.s.listenports[3]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[3]=port & global.s.procs[3] = 1 & !f: 0; 
+					--MVOC PROCESS_CURRENT()
+				TRUE : global.s.listenports[3];
+			esac;
+		next(global.s.procs[3]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[3]=port & global.s.procs[3] = 1 & !f: 
+					--MVOC PROCESS_CURRENT();
+					0;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.listenports[3];
+			esac;
+		next(global.s.listenports[4]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[4]=port & global.s.procs[4] = 1 & !f: 0; 
+					--MVOC PROCESS_CURRENT()
+				TRUE : global.s.listenports[4];
+			esac;
+		next(global.s.procs[4]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[4]=port & global.s.procs[4] = 1 & !f: 
+					--MVOC PROCESS_CURRENT();
+					0;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.listenports[4];
+			esac;
+		next(f):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[l]=port & global.s.procs[l] = 1 & !f: TRUE;
+					--MVOC PROCESS_CURRENT()
+				TRUE : f;
+			esac;
+				
+	SPEC AG (AF l < global.UIP_LISTENPORTS)
+	SPEC AG (AF i < global.UIP_LISTENPORTS)
+		
+MODULE tcp_listen(global,port)
+	VAR
+		-- static unsigned char i;
+		i : 0..255;
+		-- struct listenport *l;
+		l : 0..(global.UIP_LISTENPORTS);
+		f : boolean; --listened, break!
+	ASSIGN
+		init(f) := FALSE;
+		-- l=s.listenports;
+		init(l):=0;
+		next(l):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[l]=0 & !f : 
+					l;
+				i<global.UIP_LISTENPORTS & !f:
+					-- for loop's (...;i < UIP_LISTENPORTS; ++i)
+					l+1;
+				TRUE :
+					l;
+			esac;
+		-- for loop's i=0
+		init(i):=0;
+		next(i):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[l]=0 & !f : 
+					i;
+				i<global.UIP_LISTENPORTS & !f:
+					-- for loop's (...;i < UIP_LISTENPORTS; ++i)
+					i+1;
+				TRUE :
+					i;
+			esac;
+		next(global.s.listenports[0]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[0]=0 & !f & l=0: port;
+				TRUE : global.s.listenports[0];
+			esac;
+		next(global.s.procs[0]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[0]=0 & !f & l=0: 
+					1;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.procs[0];
+			esac;
+		next(global.s.listenports[1]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[1]=0 & !f & l=1: port;
+				TRUE : global.s.listenports[1];
+			esac;
+		next(global.s.procs[1]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[1]=0 & !f & l=1: 
+					1;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.procs[1];
+			esac;
+		next(global.s.listenports[2]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[2]=0 & !f & l=2: port;
+				TRUE : global.s.listenports[2];
+			esac;
+		next(global.s.procs[2]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[2]=0 & !f & l=2: 
+					1;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.procs[2];
+			esac;
+		next(global.s.listenports[3]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[3]=0 & !f & l=3: port;
+				TRUE : global.s.listenports[3];
+			esac;
+		next(global.s.procs[3]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[3]=0 & !f & l=3: 
+					1;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.procs[3];
+			esac;
+		next(global.s.listenports[4]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[4]=0 & !f & l=4: port;
+				TRUE : global.s.listenports[4];
+			esac;
+		next(global.s.procs[4]):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[4]=0 & !f & l=4: 
+					1;--MVOC PROCESS_CURRENT();
+					--MVOC uip_listen(port);
+				TRUE : global.s.procs[4];
+			esac;
+		next(f):=
+			case
+				-- if(l->port == 0)
+				global.s.listenports[l]=0 & !f : TRUE;
+				TRUE : f;
+			esac;
+				
+	SPEC AG (AF l < global.UIP_LISTENPORTS)
+	SPEC AG (AF i < global.UIP_LISTENPORTS)
+
+MODULE main --PROCESS_THREAD
+	--MVOC PROCESS_BEGIN();
+	VAR
+		i: 0..255;
+		global: g;
+		connection : Connection;
+		t: tcp_listen(global,5);
+	ASSIGN
+		init(i):= 0;
+		next(i):=
+			case
+				i<global.UIP_LISTENPORTS : i+1;
+				TRUE: i;
+			esac;
+		init(global.s.listenports[0]):=
+			case
+				i=0 : 0;
+			esac;
+		init(global.s.listenports[1]):=
+			case
+				i=1 : 0;
+			esac;
+		init(global.s.listenports[2]):=
+			case
+				i=2 : 0;
+			esac;
+		init(global.s.listenports[3]):=
+			case
+				i=3 : 0;
+			esac;
+		init(global.s.listenports[4]):=
+			case
+				i=4 : 0;
+			esac;
+		init(global.s.procs[0]):=
+			case
+				i=0 : 1;--MVOC PROCESS_CURRENT();
+			esac;
+		init(global.s.procs[1]):=
+			case
+				i=0 : 1;--MVOC PROCESS_CURRENT();
+			esac;
+		init(global.s.procs[2]):=
+			case
+				i=0 : 1;--MVOC PROCESS_CURRENT();
+			esac;
+		init(global.s.procs[3]):=
+			case
+				i=0 : 1;--MVOC PROCESS_CURRENT();
+			esac;
+		init(global.s.procs[4]):=
+			case
+				i=0 : 1;--MVOC PROCESS_CURRENT();
+			esac;
+		
+	SPEC AG (AF i < global.UIP_LISTENPORTS)
+	CTLSPEC   EF( connection.state = Connection_Closed )
+	CTLSPEC   EF( connection.state = Connection_Listen )
+	CTLSPEC   EF( connection.state = Connection_SYN_Received )
+	CTLSPEC   EF( connection.state = Connection_SYN_Sent )
+	CTLSPEC   EF( connection.state = Connection_Established )
+	CTLSPEC   EF( connection.state = Connection_Close_Wait )
+	CTLSPEC   EF( connection.state = Connection_Last_ACK )
+	CTLSPEC   EF( connection.state = Connection_FIN_Wait_1 )
+	CTLSPEC   EF( connection.state = Connection_FIN_Wait_2 )
+	CTLSPEC   EF( connection.state = Connection_Closing )
+	CTLSPEC   EF( connection.state = Connection_Timed_Wait )
