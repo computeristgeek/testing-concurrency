@@ -56,22 +56,22 @@ MODULE Connection
 -- This defines a NuSMV module for main --
 MODULE proc
 	VAR
-		name : array 0..255 of 0..255;
-		state : 0..255;
-		needspoll : 0..255;
+		name : array 0..2 of 0..2;
+		state : 0..2;
+		needspoll : 0..2;
 		-- uint16_t
-		n: 0..65536;
+		n: 0..6;
 
 MODULE listenport
 	VAR
 		-- uint16_t
-		port : 0..65536;
+		port : 0..6;
 		p : proc;
 
 MODULE internal_state
 	VAR
-		listenports : array 0..4 of 0..65536; --listenport; 
-		procs : array 0..4 of 0..65536; --listenport's proc;
+		listenports : array 0..4 of 0..6; --listenport; 
+		procs : array 0..4 of 0..6; --listenport's proc;
 		p : proc;
 
 MODULE g
@@ -86,7 +86,7 @@ MODULE g
 MODULE tcp_unlisten(global,port)
 	VAR
 		-- static unsigned char i;
-		i : 0..255;
+		i : 0..(global.UIP_LISTENPORTS);
 		-- struct listenport *l;
 		l : 0..(global.UIP_LISTENPORTS);
 		f : boolean; --listened, break!
@@ -214,7 +214,7 @@ MODULE tcp_unlisten(global,port)
 MODULE tcp_listen(global,port)
 	VAR
 		-- static unsigned char i;
-		i : 0..255;
+		i : 0..(global.UIP_LISTENPORTS);
 		-- struct listenport *l;
 		l : 0..(global.UIP_LISTENPORTS);
 		f : boolean; --listened, break!
@@ -329,7 +329,7 @@ MODULE tcp_listen(global,port)
 MODULE main --PROCESS_THREAD
 	--MVOC PROCESS_BEGIN();
 	VAR
-		i: 0..255;
+		i: 0..4;
 		global: g;
 		connection : Connection;
 		t: tcp_listen(global,5);

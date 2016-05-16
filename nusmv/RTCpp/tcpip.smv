@@ -59,38 +59,6 @@ MODULE Connection
        TRUE : ev_null;
      esac;
 
-   -- This part defines logic for the assignment of values to state variable "SYN" of this NuSMV module --
-   ASSIGN
-     init( SYN ) := "SYN";
-
-   -- This part defines logic for the assignment of values to state variable "ACK" of this NuSMV module --
-   ASSIGN
-     init( ACK ) := "ACK";
-
-   -- This part defines logic for the assignment of values to state variable "FIN" of this NuSMV module --
-   ASSIGN
-     init( FIN ) := "FIN";
-
-   -- This part defines logic for the assignment of values to state variable "RST" of this NuSMV module --
-   ASSIGN
-     init( RST ) := "RST";
-
-   -- This part defines logic for the assignment of values to state variable "SYNACK" of this NuSMV module --
-   ASSIGN
-     init( SYNACK ) := "SYNAck";
-
-   -- This part defines logic for the assignment of values to state variable "q" of this NuSMV module --
-   ASSIGN
-     init( q ) := new Queue_Tcp();
-
-   -- This part defines logic for the assignment of values to state variable "in" of this NuSMV module --
-   ASSIGN
-     init( in ) := null;
-
-   -- This part defines logic for the assignment of values to state variable "sentence" of this NuSMV module --
-   ASSIGN
-     init( sentence ) := ;
-
 -- This defines a NuSMV module for main --
 MODULE main
 
